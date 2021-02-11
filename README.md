@@ -25,6 +25,12 @@ To use this connector you will have to create a app with the necessary credentia
 
 ## How to use this connector
 
+- Install power query sdk https://docs.microsoft.com/en-us/power-query/installingsdk,
+- Clone this repository into your local environment,
+- use Visual Studio to build this project,
+- Copy the .mez file from build into *./Documents/Power BI Desktop/Custom connectors
+- It should appear as a new datasource. Select the function in the navigation and start creating your queries.
+
 ## Special thanks and much deserved recognition:
 
 This connector is inspired and expands on the amazing worke form Ruth Pozuelo Martinez (@curbalen). You can find her implementation in the following link <https://github.com/ruthpozuelo/GoogleAnalyticsConnector>
