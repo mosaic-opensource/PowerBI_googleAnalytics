@@ -9,37 +9,17 @@
 section GA_connector;
 
 // Connection Parameters
-clientId = "612276308906-p468kqi1smecbpga88qd4c75sv2lkuie.apps.googleusercontent.com";
-clientSecret =  "7kEn9JrouVhniNvV8-TC_jo-";
+clientId = Json.Document("credentials.json");
+clientSecret =  Json.Document("credentials.json");
 redirectUrl = "https://oauth.powerbi.com/views/oauthredirect.html";
 token_uri = "https://oauth2.googleapis.com/token";
 auth_uri = "https://accounts.google.com/o/oauth2/auth";
 logout_uri = "https://accounts.google.com/logout";
-refresh_token = "1//03Jc-AX-EFSROCgYIARAAGAMSNwF-L9IrV5gN8MkuHB4ad3xs-Ny_KFRCDzec5G_ORSAeb-waT7oUyi7X7gwtt6Kp82J7zxWdu_c";
+scope = "https://www.googleapis.com/auth/analytics.readonly";
 
 windowWidth = 720;
 windowHeight = 1024;
 
-// Set scope to read only
-scope_prefix = "https://www.googleapis.com/auth/";
-scopes = {
-    "analytics.readonly"
-};
-
-
-// * CODE NEEDS REVIEW
-Value.IfNull = (a,b) => 
-    if a <> null then a else b;
-
-
-GetScopeString = (scopes as list, optional scopePrefix as text) as text => 
-    let
-        prefix = Value.IfNull(scopePrefix, ""),
-        addPrefix = List.Transform(scopes, each prefix & _),
-        asText = Text.Combine(addPrefix," ")
-    in
-        asText;
-// *****************
 
 [DataSource.Kind="GA_connector", Publish="GA_connector.Publish"]
 shared NavigationTable.Simple = () =>
@@ -195,7 +175,7 @@ StartLogin = (resourceUrl, state, display) =>
             client_id = clientId,  
             redirect_uri = redirectUrl,   
             state = "security_token",
-            scope = GetScopeString(scopes, scope_prefix),
+            scope = scope,
             response_type = "code",
             response_mode = "query",
             access_type = "offline",
