@@ -6,6 +6,7 @@
 # Folder
 bin/
 obj/
+obj/Debug/GA_connector.m
 .vs/*
 
 # Secrets
