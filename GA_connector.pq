@@ -39,10 +39,10 @@ shared NavigationTable.Simple = () =>
 shared Googleanalytics.GETReports = Value.ReplaceType( GetReports, GetReportsType );
 
 GetReportsType = type function (
-    optional PStartDate as (type date meta [ 
+    optional PStartDate as (type text meta [ 
         Documentation.FieldCaption = "Start Date"
     ]),
-     optional PEndDate as (type date meta [ 
+     optional PEndDate as (type text meta [ 
         Documentation.FieldCaption = "End Date"
     ]),
      optional Pids as (type text meta [
@@ -96,8 +96,8 @@ GetReportsType = type function (
     ];
 
 GetReports = ( 
-    optional PStartDate as date, 
-    optional PEndDate as date, 
+    optional PStartDate as text, 
+    optional PEndDate as text, 
     optional Pids as text, 
     optional Pmetrics as text, 
     optional Pdimensions as text, 
@@ -105,8 +105,6 @@ GetReports = (
     optional Pfilters as text, 
     optional Psegment as text ) as table =>
     let
-        Start = Date.ToText( PStartDate, "yyyy-MM-dd" ),
-        End = Date.ToText( PEndDate, "yyyy-MM-dd" ),
         requesturl = "https://www.googleapis.com/analytics/v3/data/ga",
         GETInfo = [
             /*
