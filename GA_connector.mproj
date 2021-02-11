@@ -67,6 +67,12 @@
     <Compile Include="resources.resx">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="client_id">
+      <SubType>Content</SubType>
+    </Compile>
+    <Compile Include="client_secret">
+      <SubType>Content</SubType>
+    </Compile>
     <Content Include="GA_connector.query.pq">
       <SubType>Code</SubType>
     </Content>

@@ -9,8 +9,8 @@
 section GA_connector;
 
 // Connection Parameters
-clientId = "612276308906-p468kqi1smecbpga88qd4c75sv2lkuie.apps.googleusercontent.com";
-clientSecret = "7kEn9JrouVhniNvV8-TC_jo-";
+clientId = Text.FromBinary(Extension.Contents("client_id"));
+clientSecret = Text.FromBinary(Extension.Contents("client_secret"));
 
 redirectUrl = "https://oauth.powerbi.com/views/oauthredirect.html";
 token_uri = "https://oauth2.googleapis.com/token";
@@ -72,28 +72,8 @@ GetReportsType = type function (
     ]))
 
     as table meta [
-        Documentation.Name = "Google Analytics API v4",
-        Documentation.LongDescription = "Read the full Google Analytics API documentation from Google and find how to construct your query at:https://ga-dev-tools.appspot.com/query-explorer/",
-        Documentation.Examples = {[
-            Description = "Quick query to get the views by day from June 1st, 2017 until June 3rd, 2017",
-            Code = "Check the Documentation at: https://ga-dev-tools.appspot.com/query-explorer/
-            
-            Example: 
-            GoogleAnalytics.GETReports (
-             #date(2017,6,1), 
-             #date(2017,6,3), 
-             ""ga:88362167"", 
-             ""ga:sessions"", 
-             ""ga:date"", 
-             null, 
-             null, 
-             null, 
-             null)",
-                        Result = "#table({""date"",""sessions""},{
-                        {""2017-06-01"",""230""},
-                        {""2017-06-02"",""255""},
-                        {""2017-06-03"",""386""}}))"
-        ]}
+        Documentation.Name = "Google Analytics - Advance Custom Connector",
+        Documentation.LongDescription = "Read the full Google Analytics API documentation from Google and find how to construct your query at:https://ga-dev-tools.appspot.com/query-explorer/"
     ];
 
 GetReports = ( 

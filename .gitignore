@@ -6,7 +6,11 @@
 # Folder
 bin/
 obj/
-.vs/
+.vs/*
+
+# Secrets
+client_id
+client_secret
 
 # User-specific files
 *.rsuser
