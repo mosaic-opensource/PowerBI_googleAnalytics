@@ -133,7 +133,10 @@ GetReports = (
                 each [x = [x] + 1, y = Number.ToText(10000* x + 1) ]
             )
         ),
-        runQueryIndex = Table.TransformColumns(startIndexList,{"y", each getQuery(Pids, Pdimensions, Pmetrics, PStartDate, PEndDate, _)}),
+        runQueryIndex = Table.TransformColumns(startIndexList,{"y", each getQuery(Pids, Pdimensions, Pmetrics, PStartDate, PEndDate, _, 
+                                                                                    if Pfilters = null then "" else Pfilters,
+                                                                                    if Psort = null then "" else Psort,
+                                                                                    if Psegment = null then "" else Psegment)}),
         columnHeaders = Table.ColumnNames(runQueryIndex{0}[y]),
         ExpandData = Table.ExpandTableColumn(runQueryIndex,"y", columnHeaders),
         Output = Table.RemoveColumns(ExpandData,"x")
@@ -175,24 +178,30 @@ getQuery = (
     metrics as text,
     startDate as text, 
     endDate as text,
-    startIndex as text
+    startIndex as text,
+    filters as text,
+    sort as text,
+    segment as text
 ) =>
 let
     maxRows = "10000",
     query = 
-        [Query = 
-            [
-                #"ids" = id,
-                #"start-date" = startDate,
-                #"end-date" = endDate,
-                #"dimensions" = dimensions,
-                #"metrics" = metrics,
-                #"max-results" = maxRows,
-                #"start-index" = startIndex
-            ]
+        [
+            #"ids" = id,
+            #"start-date" = startDate,
+            #"end-date" = endDate,
+            #"dimensions" = dimensions,
+            #"metrics" = metrics,
+            #"max-results" = maxRows,
+            #"start-index" = startIndex,
+            #"filters" = filters,
+            #"sort" = sort,
+            #"segment" = segment,
+            #"samplingLevel" = "HIGHER_PRECISION"
         ],
+    CleanedQuery = Record.RemoveFields( query,  Table.SelectRows( Record.ToTable ( query ), each ([Value] = ""))[Name] ),
     Source = Json.Document(
-        Web.Contents("https://www.googleapis.com/analytics/v3/data/ga" , query)
+        Web.Contents("https://www.googleapis.com/analytics/v3/data/ga" , [Query =  CleanedQuery ])
     ),
     ColumnHeaders = Table.FromRecords(Source[columnHeaders])[name],
     DataValues = List.Transform(Source[rows], each Record.FromList(_, ColumnHeaders)),
