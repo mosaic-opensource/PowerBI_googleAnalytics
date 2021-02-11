@@ -9,8 +9,9 @@
 section GA_connector;
 
 // Connection Parameters
-clientId = Json.Document("credentials.json");
-clientSecret =  Json.Document("credentials.json");
+clientId = "612276308906-p468kqi1smecbpga88qd4c75sv2lkuie.apps.googleusercontent.com";
+clientSecret = "7kEn9JrouVhniNvV8-TC_jo-";
+
 redirectUrl = "https://oauth.powerbi.com/views/oauthredirect.html";
 token_uri = "https://oauth2.googleapis.com/token";
 auth_uri = "https://accounts.google.com/o/oauth2/auth";
@@ -105,39 +106,40 @@ GetReports = (
     optional Pfilters as text, 
     optional Psegment as text ) as table =>
     let
-        requesturl = "https://www.googleapis.com/analytics/v3/data/ga",
-        GETInfo = [
-            /*
-            ids = Pids,
-            #"start-date" = Start,
-            #"end-date" = End,
-            metrics = Pmetrics,
-            dimensions = Pdimensions,
-            filters = Pfilters,
-            sort = Psort,
-            segment = Psegment
-            */
-            ids = "ga:194571240",
-            #"start-date" = "30daysAgo",
-            #"end-date" = "today",
-            metrics =  "ga:sessions",
-            dimensions = "ga:clientId,ga:country,ga:date"
-            
-        ],
-        // Removes empty rows
-        CleanedRecord = Record.RemoveFields( GETInfo,  Table.SelectRows( Record.ToTable ( GETInfo), each ([Value] = null))[Name] ),
-        Request = Json.Document(
-            Web.Contents(
-                requesturl,
-                [RelativePath = "?" & Uri.BuildQueryString(CleanedRecord)]
+        testQuery = 
+            [
+                #"ids" = Pids,
+                #"start-date" = PStartDate,
+                #"end-date" = PEndDate,
+                #"dimensions" = Pdimensions,
+                #"metrics" = Pmetrics,
+                #"max-results" = "1",
+                #"start-index" = "1",
+                #"samplingLevel" = "HIGHER_PRECISION",
+                #"filters" = Pfilters,
+                #"sort" = Psort,
+                #"segment" = Psegment
+            ],
+        CleanedTestQuery = Record.RemoveFields( testQuery,  Table.SelectRows( Record.ToTable ( testQuery ), each ([Value] = null))[Name] ),
+        testResults = Json.Document(
+            Web.Contents("https://www.googleapis.com/analytics/v3/data/ga" , [Query =  CleanedTestQuery ])
+        ),
+        resultsSize = testResults[totalResults],
+        nQueries = Number.RoundDown((resultsSize - 1) / 10000) ,
+        startIndexList = Table.FromRecords(
+            List.Generate(
+                () => [x = 0, y = "1"],
+                each [x] <= nQueries,
+                each [x = [x] + 1, y = Number.ToText(10000* x + 1) ]
             )
         ),
-        ColumnHeaders = Table.FromRecords(Request[columnHeaders])[name],
-        DataValues = List.Transform ( Request[rows], each Record.FromList( _, ColumnHeaders ) ),
-        OutputTable = Table.FromRecords( DataValues )
+        runQueryIndex = Table.TransformColumns(startIndexList,{"y", each getQuery(Pids, Pdimensions, Pmetrics, PStartDate, PEndDate, _)}),
+        columnHeaders = Table.ColumnNames(runQueryIndex{0}[y]),
+        ExpandData = Table.ExpandTableColumn(runQueryIndex,"y", columnHeaders),
+        Output = Table.RemoveColumns(ExpandData,"x")
+    in
+        Output;
         
-    in 
-        OutputTable;
 
 // Data Source Kind description
 GA_connector = [
@@ -166,6 +168,39 @@ GA_connector.Icons = [
 ];
 
 // Functions
+
+getQuery = ( 
+    id as text,
+    dimensions as text,
+    metrics as text,
+    startDate as text, 
+    endDate as text,
+    startIndex as text
+) =>
+let
+    maxRows = "10000",
+    query = 
+        [Query = 
+            [
+                #"ids" = id,
+                #"start-date" = startDate,
+                #"end-date" = endDate,
+                #"dimensions" = dimensions,
+                #"metrics" = metrics,
+                #"max-results" = maxRows,
+                #"start-index" = startIndex
+            ]
+        ],
+    Source = Json.Document(
+        Web.Contents("https://www.googleapis.com/analytics/v3/data/ga" , query)
+    ),
+    ColumnHeaders = Table.FromRecords(Source[columnHeaders])[name],
+    DataValues = List.Transform(Source[rows], each Record.FromList(_, ColumnHeaders)),
+    OutputTable = Table.FromRecords( DataValues ),
+    RenameHeaders = List.Transform(Table.ColumnNames(OutputTable), each {_, Text.Replace(_,"ga:","")}),
+    Output = Table.RenameColumns(OutputTable, RenameHeaders)        
+in
+    Output;
 
 StartLogin = (resourceUrl, state, display) =>
     let

@@ -10,36 +10,17 @@ section GA_connector;
 
 // Connection Parameters
 clientId = "612276308906-p468kqi1smecbpga88qd4c75sv2lkuie.apps.googleusercontent.com";
-clientSecret =  "7kEn9JrouVhniNvV8-TC_jo-";
+clientSecret = "7kEn9JrouVhniNvV8-TC_jo-";
+
 redirectUrl = "https://oauth.powerbi.com/views/oauthredirect.html";
 token_uri = "https://oauth2.googleapis.com/token";
 auth_uri = "https://accounts.google.com/o/oauth2/auth";
 logout_uri = "https://accounts.google.com/logout";
-refresh_token = "1//03Jc-AX-EFSROCgYIARAAGAMSNwF-L9IrV5gN8MkuHB4ad3xs-Ny_KFRCDzec5G_ORSAeb-waT7oUyi7X7gwtt6Kp82J7zxWdu_c";
+scope = "https://www.googleapis.com/auth/analytics.readonly";
 
 windowWidth = 720;
 windowHeight = 1024;
 
-// Set scope to read only
-scope_prefix = "https://www.googleapis.com/auth/";
-scopes = {
-    "analytics.readonly"
-};
-
-
-// * CODE NEEDS REVIEW
-Value.IfNull = (a,b) => 
-    if a <> null then a else b;
-
-
-GetScopeString = (scopes as list, optional scopePrefix as text) as text => 
-    let
-        prefix = Value.IfNull(scopePrefix, ""),
-        addPrefix = List.Transform(scopes, each prefix & _),
-        asText = Text.Combine(addPrefix," ")
-    in
-        asText;
-// *****************
 
 [DataSource.Kind="GA_connector", Publish="GA_connector.Publish"]
 shared NavigationTable.Simple = () =>
@@ -59,10 +40,10 @@ shared NavigationTable.Simple = () =>
 shared Googleanalytics.GETReports = Value.ReplaceType( GetReports, GetReportsType );
 
 GetReportsType = type function (
-    optional PStartDate as (type date meta [ 
+    optional PStartDate as (type text meta [ 
         Documentation.FieldCaption = "Start Date"
     ]),
-     optional PEndDate as (type date meta [ 
+     optional PEndDate as (type text meta [ 
         Documentation.FieldCaption = "End Date"
     ]),
      optional Pids as (type text meta [
@@ -116,8 +97,8 @@ GetReportsType = type function (
     ];
 
 GetReports = ( 
-    optional PStartDate as date, 
-    optional PEndDate as date, 
+    optional PStartDate as text, 
+    optional PEndDate as text, 
     optional Pids as text, 
     optional Pmetrics as text, 
     optional Pdimensions as text, 
@@ -125,66 +106,40 @@ GetReports = (
     optional Pfilters as text, 
     optional Psegment as text ) as table =>
     let
-        Start = Date.ToText( PStartDate, "yyyy-MM-dd" ),
-        End = Date.ToText( PEndDate, "yyyy-MM-dd" ),
-        requesturl = "https://www.googleapis.com/analytics/v3/data/ga",
-        GETInfo = [
-            /*
-            ids = Pids,
-            #"start-date" = Start,
-            #"end-date" = End,
-            metrics = Pmetrics,
-            dimensions = Pdimensions,
-            filters = Pfilters,
-            sort = Psort,
-            segment = Psegment
-            */
-            ids = "ga:194571240",
-            #"start-date" = "30daysAgo",
-            #"end-date" = "today",
-            metrics =  "ga:sessions",
-            dimensions = "ga:clientId,ga:country,ga:date"
-            
-        ],
-        // Removes empty rows
-        CleanedRecord = Record.RemoveFields( GETInfo,  Table.SelectRows( Record.ToTable ( GETInfo), each ([Value] = null))[Name] ),
-        Request = Json.Document(
-            Web.Contents(
-                requesturl,
-                [RelativePath = "?" & Uri.BuildQueryString(CleanedRecord)]
+        testQuery = 
+            [
+                #"ids" = Pids,
+                #"start-date" = PStartDate,
+                #"end-date" = PEndDate,
+                #"dimensions" = Pdimensions,
+                #"metrics" = Pmetrics,
+                #"max-results" = "1",
+                #"start-index" = "1",
+                #"samplingLevel" = "HIGHER_PRECISION",
+                #"filters" = Pfilters,
+                #"sort" = Psort,
+                #"segment" = Psegment
+            ],
+        CleanedTestQuery = Record.RemoveFields( testQuery,  Table.SelectRows( Record.ToTable ( testQuery ), each ([Value] = null))[Name] ),
+        testResults = Json.Document(
+            Web.Contents("https://www.googleapis.com/analytics/v3/data/ga" , [Query =  CleanedTestQuery ])
+        ),
+        resultsSize = testResults[totalResults],
+        nQueries = Number.RoundDown((resultsSize - 1) / 10000) ,
+        startIndexList = Table.FromRecords(
+            List.Generate(
+                () => [x = 0, y = "1"],
+                each [x] <= nQueries,
+                each [x = [x] + 1, y = Number.ToText(10000* x + 1) ]
             )
         ),
-        ColumnHeaders = Table.FromRecords(Request[columnHeaders])[name],
-        DataValues = List.Transform ( Request[rows], each Record.FromList( _, ColumnHeaders ) ),
-        OutputTable = Table.FromRecords( DataValues )
+        runQueryIndex = Table.TransformColumns(startIndexList,{"y", each getQuery(Pids, Pdimensions, Pmetrics, PStartDate, PEndDate, _)}),
+        columnHeaders = Table.ColumnNames(runQueryIndex{0}[y]),
+        ExpandData = Table.ExpandTableColumn(runQueryIndex,"y", columnHeaders),
+        Output = Table.RemoveColumns(ExpandData,"x")
+    in
+        Output;
         
-        /*
-        OutputTable = Table.FromRecords( {Request} ),
-
-        ColumnHeaders = 
-        Table.Transpose(
-            Table.ExpandRecordColumn(
-                Table.ExpandListColumn(Table.SelectColumns(OutputTable,{"columnHeaders"}),"columnHeaders"),
-                "columnHeaders", {"name"}, {"name"}
-            )
-        ),
-
-        OutputClean = 
-        Table.SelectColumns(
-            Table.TransformColumns(
-                Table.ExpandListColumn(OutputTable, "rows"), 
-                {"rows", each Text.Combine(List.Transform(_, Text.From), ","), type text}
-            ), 
-            {"rows"}
-        ),
-
-        data = Table.SplitColumn(OutputClean, "rows", Splitter.SplitTextByDelimiter(",",QuoteStyle.Csv)),
-
-        //output = Table.FromList( Table.ColumnNames(ColumnHeaders) )
-        //output = Table.FromValue(Table.FromRecords(Request[columnHeaders])[name])
-        */
-    in 
-        OutputTable;
 
 // Data Source Kind description
 GA_connector = [
@@ -214,16 +169,49 @@ GA_connector.Icons = [
 
 // Functions
 
+getQuery = ( 
+    id as text,
+    dimensions as text,
+    metrics as text,
+    startDate as text, 
+    endDate as text,
+    startIndex as text
+) =>
+let
+    maxRows = "10000",
+    query = 
+        [Query = 
+            [
+                #"ids" = id,
+                #"start-date" = startDate,
+                #"end-date" = endDate,
+                #"dimensions" = dimensions,
+                #"metrics" = metrics,
+                #"max-results" = maxRows,
+                #"start-index" = startIndex
+            ]
+        ],
+    Source = Json.Document(
+        Web.Contents("https://www.googleapis.com/analytics/v3/data/ga" , query)
+    ),
+    ColumnHeaders = Table.FromRecords(Source[columnHeaders])[name],
+    DataValues = List.Transform(Source[rows], each Record.FromList(_, ColumnHeaders)),
+    OutputTable = Table.FromRecords( DataValues ),
+    RenameHeaders = List.Transform(Table.ColumnNames(OutputTable), each {_, Text.Replace(_,"ga:","")}),
+    Output = Table.RenameColumns(OutputTable, RenameHeaders)        
+in
+    Output;
+
 StartLogin = (resourceUrl, state, display) =>
     let
         AuthorizeUrl = auth_uri & "?" & Uri.BuildQueryString([
             client_id = clientId,  
             redirect_uri = redirectUrl,   
             state = "security_token",
-            scope = GetScopeString(scopes, scope_prefix),
+            scope = scope,
             response_type = "code",
             response_mode = "query",
-            access_type="offline",
+            access_type = "offline",
             login = "login"    
         ])
     in
@@ -254,12 +242,13 @@ TokenMethod = (code) =>
                 client_secret = clientSecret,
                 code = code,
                 redirect_uri = redirectUrl])),
-                Headers=[#"Content-type" = "application/x-www-form-urlencoded",#"Accept" = "application/json"], ManualStatusHandling = {400}]),
-                body = Json.Document(response),
-                result = if (Record.HasFields(body, {"error", "error_description"})) then 
-                            error Error.Record(body[error], body[error_description], body)
-                        else
-                            body
+            Headers = [#"Content-type" = "application/x-www-form-urlencoded",#"Accept" = "application/json"], ManualStatusHandling = {400}]),
+            body = Json.Document(response),
+            result = if (Record.HasFields(body, {"error", "error_description"})) 
+                    then 
+                        error Error.Record(body[error], body[error_description], body)
+                    else
+                        body
     in
         result;
 
