@@ -1,6 +1,6 @@
 ﻿// Use this file to write queries to test your data connector
 let
-    result = Googleanalytics.GETReports(
+    result = GA_connector.GETReports(
         "30daysAgo",
         "today",
         "ga:194571240",

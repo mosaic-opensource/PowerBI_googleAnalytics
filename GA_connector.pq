@@ -1,4 +1,6 @@
 ﻿
+section GA_connector;
+
 // Title: Advanced Google Analytics Connector for Power BI
 // Description & Goal: Data connector using the full capabilities of GA REST API with a Oauth2 connection
 // Author: Pedro Magalhães - (@pmags) - www.mosaic.pt
@@ -6,21 +8,26 @@
 // Repository Url:
 // Based on: Ruth Pozuelo Martinez (@curbalen] https://github.com/ruthpozuelo/GoogleAnalyticsConnector
 
-section GA_connector;
+//
+// OAuth configuration settings
+//
+// The values below should be replaced by velues of  your application.
+// For more information about Google API connection please visit: https://developers.google.com/analytics/devguides/reporting/core/v3/reference
+// Update the values within the "client_id" and "client_secret" files in the project.
+//
+// Note: The current version of this connector uses Google Analytics V3
 
-// Connection Parameters
 clientId = Text.FromBinary(Extension.Contents("client_id"));
 clientSecret = Text.FromBinary(Extension.Contents("client_secret"));
-
 redirectUrl = "https://oauth.powerbi.com/views/oauthredirect.html";
 token_uri = "https://oauth2.googleapis.com/token";
 auth_uri = "https://accounts.google.com/o/oauth2/auth";
 logout_uri = "https://accounts.google.com/logout";
 scope = "https://www.googleapis.com/auth/analytics.readonly";
-
 windowWidth = 720;
 windowHeight = 1024;
 
+// Exported functions
 
 [DataSource.Kind="GA_connector", Publish="GA_connector.Publish"]
 shared NavigationTable.Simple = () =>
@@ -28,16 +35,18 @@ shared NavigationTable.Simple = () =>
         objects = #table(
             { "Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf" },
             { 
-                { "GET Reports", "Googleanalytics.GETReports", Googleanalytics.GETReports,"Function", "Function", true }
+                { "GET Google Analytics Reports", "GA_connector.GETReports", GA_connector.GETReports,"Function", "Function", true }
             }       
         ),
         NavTable = Table.ToNavigationTable(objects, { "Key" }, "Name", "Data", "ItemKind", "ItemName", "IsLeaf")
     in
         NavTable;
 
-
 [DataSource.Kind="GA_connector"]
-shared Googleanalytics.GETReports = Value.ReplaceType( GetReports, GetReportsType );
+shared GA_connector.GETReports = Value.ReplaceType( GetReports, GetReportsType );
+       
+
+// Data Source definition
 
 GetReportsType = type function (
     optional PStartDate as (type text meta [ 
@@ -122,9 +131,7 @@ GetReports = (
         Output = Table.RemoveColumns(ExpandData,"x")
     in
         Output;
-        
 
-// Data Source Kind description
 GA_connector = [
     Authentication = [
          OAuth = [
