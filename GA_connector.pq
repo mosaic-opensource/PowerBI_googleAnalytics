@@ -72,7 +72,7 @@ GetReportsType = type function (
     ]))
 
     as table meta [
-        Documentation.Name = "Google Analytics API v4",
+        Documentation.Name = "Google Analytics - Advance Custom Connector",
         Documentation.LongDescription = "Read the full Google Analytics API documentation from Google and find how to construct your query at:https://ga-dev-tools.appspot.com/query-explorer/",
         Documentation.Examples = {[
             Description = "Quick query to get the views by day from June 1st, 2017 until June 3rd, 2017",
